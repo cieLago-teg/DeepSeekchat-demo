@@ -185,8 +185,7 @@ export const canContinueReply = (reply: AssistantMessage): boolean => {
     return false
   }
   return (
-    reply.status === 'stopped' ||
-    (reply.status === 'done' && reply.stopReason === 'max_tokens')
+    reply.status === 'stopped' || (reply.status === 'done' && reply.stopReason === 'max_tokens')
   )
 }
 
@@ -322,7 +321,20 @@ export const toRequestMessages = (
       continue
     }
     appendReminder(reply.latestReminder)
-    messages.push(toUserParam(user), toAssistantParam(reply))
+    const question = toUserParam(user)
+    const steers = reply.agent?.steers.filter((s) => s.status === 'applied') ?? []
+    if (steers.length && question.role === 'user') {
+      question.content = [
+        ...(typeof question.content === 'string'
+          ? [{ type: 'text' as const, text: question.content }]
+          : question.content),
+        {
+          type: 'text',
+          text: `User steering applied to this task:\n${steers.map((s) => s.text).join('\n\n')}`,
+        },
+      ]
+    }
+    messages.push(question, toAssistantParam(reply))
   }
   appendReminder(latestReminder)
   messages.push(toUserParam(question))

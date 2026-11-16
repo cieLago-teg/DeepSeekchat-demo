@@ -19,6 +19,22 @@ pnpm dev
 
 Open http://localhost:8090.
 
+## Steerable research agent
+
+This fork adds a browser-orchestrated research loop while retaining DeepSeek, the existing chat UI, and static hosting. Upstream: [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo), v0.1.1 (`5d5dd75`). The original DeepSeek attribution and MIT license are retained.
+
+1. Enable **Research agent** and **Simulation (no key)** above the input. Ask to research the DeepSeek API.
+2. While search is waiting, send `只看官方文档，重点查 API 限制` using **Send steering** (or Enter). The task immediately shows **Received**.
+3. Click **Complete this simulated search**. The next model call includes the completed tool result and your steering; the task shows **Applied · model call 2**. Complete the second simulated search to receive the final answer in the same task. Simulation uses fixed fixtures and makes no model/search API requests.
+
+For live research, disable simulation and enter your DeepSeek API key and **Tavily search API key** in **Settings → Data**. The browser calls DeepSeek Messages API and `https://api.tavily.com/search` directly; neither key is bundled into the build. Both keys are kept in this browser's localStorage. Search queries go to Tavily and collected source excerpts go to DeepSeek. Ordinary chat only needs the DeepSeek key. Attachments and voice input are disabled in simulation.
+
+Steering takes effect **at the next model request boundary**. It cannot alter an SSE request already in flight. Tool results stay paired with their `tool_use`; pending steering is appended to that same user turn before the next request. Steering during answer generation causes another round after the current response finishes. The activity panel shows receipts, application call numbers, queries, source domains, and source links. **Applied** means included in that request, not a guarantee of model compliance. For official-only research, the model is instructed to search the official domains and the browser filters results to the requested domains.
+
+Stop cancels model and search fetches and prevents further rounds; unconsumed steering is marked **Not applied**. Each task allows up to 8 model calls, 4 searches, and 20 steering instructions of up to 4,000 characters each. Agent calls use non-thinking mode; ordinary chat retains the upstream thinking/search toggles. Task activity and steering persist in IndexedDB, and applied steering remains in later chat context. The upstream ZIP history format exports the chat text but does not preserve the new Agent activity metadata.
+
+Run `pnpm test:e2e` for the deterministic browser checks. They intercept SSE and search responses, gate search completion, and assert the subsequent request contains both steering and earlier evidence; no real keys are used. Install Chromium with `pnpm exec playwright install chromium` if needed, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. The test also writes `test-results/steering-requests.json` and a demo screenshot for inspection. Run `pnpm build && pnpm test:static` to verify the production files through a local static HTTP server. See [verification notes](docs/verification.md).
+
 To build the static site:
 
 ```sh

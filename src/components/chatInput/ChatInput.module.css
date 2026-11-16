@@ -330,3 +330,21 @@
     cursor: not-allowed;
   }
 }
+.agentOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 16px 6px;
+  font-size: 13px;
+}
+.agentOptions label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.agentHint {
+  padding: 0 16px 6px;
+  font-size: 12px;
+  opacity: 0.7;
+}

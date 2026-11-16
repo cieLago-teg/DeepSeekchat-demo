@@ -7,9 +7,9 @@ import {
   IconStopFill16,
   IconThinkOutline14,
 } from '../base/icons.js'
-import { setSearch, setThinking, useSettings } from '../../services/settings.js'
+import { setAgent, setDemo, setSearch, setThinking, useSettings } from '../../services/settings.js'
 import { useIsMobile } from '../../app/viewport.js'
-import { sendMessage, stopReply, useChatStore } from '../../services/chat/store.js'
+import { sendMessage, steerReply, stopReply, useChatStore } from '../../services/chat/store.js'
 import {
   addDraftFiles,
   EMPTY_DRAFT,
@@ -23,7 +23,7 @@ import {
 import { stopReadAloud } from '../../services/speech/readAloud.js'
 import { IconButton } from '../base/IconButton.js'
 import { Tooltip } from '../base/Tooltip.js'
-import { ensureApiKey } from '../settings/settingsDialogState.js'
+import { ensureApiKey, openSettings } from '../settings/settingsDialogState.js'
 import { DragMask, useFileDrop } from './DragMask.js'
 import { showToast } from '../base/toastState.js'
 import { ACCEPT, useUploads } from '../../services/attachments.js'
@@ -50,6 +50,14 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
     (state) => sessionId !== null && Object.hasOwn(state.streaming, sessionId)
   )
   const thinking = useSettings((state) => state.thinking)
+  const agentMode = useSettings((state) => state.agent)
+  const demo = useSettings((state) => state.demo)
+  const activeAgent = useChatStore((state) =>
+    sessionId === null
+      ? undefined
+      : state.sessionCache[sessionId]?.messages.findLast((m) => m.role === 'assistant')?.agent
+  )
+  const steering = streaming && !!activeAgent
   const importingHistory = useChatStore((state) => state.importingHistory)
   const isMobile = useIsMobile()
   const search = useSettings((state) => state.search)
@@ -75,7 +83,12 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   }, [t])
 
   const acceptFiles = (files: File[]) => {
-    if (files.length === 0 || useChatStore.getState().importingHistory || !ensureApiKey()) {
+    if (
+      files.length === 0 ||
+      useSettings.getState().demo ||
+      useChatStore.getState().importingHistory ||
+      !ensureApiKey()
+    ) {
       return
     }
     const error = addDraftFiles(sessionId, files, useSettings.getState().apiKey ?? '')
@@ -130,7 +143,16 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   const recording = voice.status === 'recording'
 
   // 排队、上传中或上传失败的附件都留在输入框，全部上传成功后才能发送
-  const canSend = !importingHistory && !streaming && voice.status === 'idle' && draftReady
+  const canSend =
+    !importingHistory &&
+    (!streaming || steering) &&
+    voice.status === 'idle' &&
+    draftReady &&
+    (!steering ||
+      (attachments.length === 0 &&
+        text.length <= 4000 &&
+        activeAgent.steers.length < 20 &&
+        activeAgent.calls < 8))
 
   const send = () => {
     if (
@@ -140,8 +162,20 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
     ) {
       return
     }
+    if (streaming) {
+      if (sessionId && steerReply(sessionId)) {
+        showToast({ key: 'agentReceiptToast' })
+        textareaRef.current?.focus()
+      }
+      return
+    }
+    if (agentMode && !demo && !useSettings.getState().tavilyKey) {
+      openSettings('data')
+      showToast({ key: 'agentSearchKeyMissing', type: 'error' })
+      return
+    }
     // 文本与上传完成态由提交动作读取最新快照，不使用上一次渲染的草稿。
-    if (!ensureApiKey() || !sendMessage(sessionId)) {
+    if ((!demo && !ensureApiKey()) || !sendMessage(sessionId)) {
       return
     }
     stopReadAloud()
@@ -161,12 +195,36 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
         }
       }}
     >
+      <div className={styles.agentOptions}>
+        <label>
+          <input
+            type="checkbox"
+            checked={agentMode}
+            disabled={streaming || importingHistory}
+            onChange={(event) => setAgent(event.target.checked)}
+          />
+          {t('agentMode')}
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={demo}
+            disabled={streaming || importingHistory}
+            onChange={(event) => setDemo(event.target.checked)}
+          />
+          {t('agentDemo')}
+        </label>
+      </div>
+      {agentMode || steering ? (
+        <div className={styles.agentHint}>{t(steering ? 'agentSteerHint' : 'agentModeHint')}</div>
+      ) : null}
       <DraftAttachments items={attachments} onRetry={retryFile} onRemove={removeFile} />
       <div className={styles.textareaWrapper}>
         <textarea
           ref={textareaRef}
           className={clsx(styles.textarea, recording && isMobile && styles.textareaHidden)}
-          placeholder={t('chatInputPlaceholderChat')}
+          placeholder={t(steering ? 'agentSteerPlaceholder' : 'chatInputPlaceholderChat')}
+          maxLength={steering ? 4000 : undefined}
           rows={2}
           // 移动端不自动聚焦，避免一打开就弹出键盘
           autoFocus={!isMobile}
@@ -208,6 +266,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
               className={clsx(styles.toggle, thinking && styles.selected)}
               aria-label={t('thinkingSwitch')}
               aria-pressed={thinking}
+              disabled={agentMode || streaming}
               onClick={() => setThinking(!thinking)}
             >
               <IconThinkOutline14 />
@@ -220,6 +279,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
               className={clsx(styles.toggle, search && styles.selected)}
               aria-label={t('search')}
               aria-pressed={search}
+              disabled={agentMode || streaming}
               onClick={() => setSearch(!search)}
             >
               <IconGlobeLanguageOutline14 />
@@ -230,7 +290,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
         <div className={styles.right}>
           <VoiceButton
             status={voice.status}
-            disabled={!voice.available}
+            disabled={!voice.available || demo}
             seconds={voice.seconds}
             onClick={() => {
               if (
@@ -246,7 +306,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
             tone="primary"
             icon={<IconPaperclipOutline16 />}
             tooltip={t('uploadFile')}
-            disabled={importingHistory}
+            disabled={importingHistory || steering || demo}
             onClick={() => ensureApiKey() && fileInputRef.current?.click()}
           />
           <input
@@ -272,17 +332,19 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
             >
               <IconStopFill16 />
             </button>
-          ) : (
+          ) : null}
+          {!streaming || steering ? (
             <button
               type="button"
               className={clsx(styles.sendButton, !canSend && styles.disabled)}
-              aria-label={t('send')}
+              aria-label={t(steering ? 'agentSteerSend' : 'send')}
               aria-disabled={!canSend}
+              disabled={!canSend}
               onClick={send}
             >
               <IconSendOutline16 />
             </button>
-          )}
+          ) : null}
         </div>
       </div>
       {dragging ? <DragMask /> : null}

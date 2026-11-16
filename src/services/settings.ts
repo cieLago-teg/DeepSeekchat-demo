@@ -10,6 +10,9 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 /** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、侧边栏收起状态 */
 type Settings = {
   apiKey: string | null
+  tavilyKey: string | null
+  agent: boolean
+  demo: boolean
   locale: Locale
   themePreference: ThemePreference
   location: UserLocation | null
@@ -21,6 +24,9 @@ type Settings = {
 
 const KEYS = {
   apiKey: 'chat-demo:api-key',
+  tavilyKey: 'chat-demo:tavily-key',
+  agent: 'chat-demo:agent',
+  demo: 'chat-demo:demo',
   locale: 'chat-demo:locale',
   location: 'chat-demo:location',
   themePreference: 'chat-demo:theme-preference',
@@ -89,6 +95,9 @@ const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide'
 
 export const useSettings = create<Settings>(() => ({
   apiKey: read(KEYS.apiKey),
+  tavilyKey: read(KEYS.tavilyKey),
+  agent: read(KEYS.agent) === 'true',
+  demo: read(KEYS.demo) === 'true',
   locale: initialLocale(),
   location: initialLocation(),
   themePreference: initialThemePreference(),
@@ -97,6 +106,21 @@ export const useSettings = create<Settings>(() => ({
   search: read(KEYS.search) === 'true',
   siderCollapsed: read(KEYS.siderCollapsed) === 'true',
 }))
+
+export const setAgent = (agent: boolean) => {
+  write(KEYS.agent, String(agent))
+  useSettings.setState({ agent })
+}
+
+export const setDemo = (demo: boolean) => {
+  write(KEYS.demo, String(demo))
+  useSettings.setState({ demo })
+}
+
+export const setTavilyKey = (tavilyKey: string | null) => {
+  write(KEYS.tavilyKey, tavilyKey)
+  useSettings.setState({ tavilyKey })
+}
 
 export const setLocale = (locale: Locale) => {
   write(KEYS.locale, locale)

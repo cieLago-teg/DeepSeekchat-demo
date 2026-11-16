@@ -1,4 +1,6 @@
 declare const styles: {
+  readonly "agentOptions": string;
+  readonly "agentHint": string;
   readonly "wrapper": string;
   readonly "session": string;
   readonly "home": string;

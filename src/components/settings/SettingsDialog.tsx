@@ -24,6 +24,7 @@ import {
   setLocation,
   setThemePreference,
   setTtsVoice,
+  setTavilyKey,
   useSettings,
   type ThemePreference,
 } from '../../services/settings.js'
@@ -104,6 +105,7 @@ const SettingsContent = () => {
           ) : (
             <>
               <ApiKeyField editor={apiKeyEditor} />
+              <ResearchSettings />
               <ImportHistory historyImport={historyImport} disabled={historyBusy} />
               <ExportHistory disabled={historyBusy} />
               <SettingCell
@@ -203,6 +205,28 @@ const useHistoryDelete = () => {
     },
     confirm,
   }
+}
+
+const ResearchSettings = () => {
+  const t = useTranslate()
+  const key = useSettings((state) => state.tavilyKey)
+  return (
+    <SettingCell
+      label={t('agentSearchKey')}
+      description={t('agentSearchKeyHint')}
+      status={null}
+      action={
+        <input
+          type="password"
+          aria-label={t('agentSearchKey')}
+          autoComplete="off"
+          value={key ?? ''}
+          onChange={(event) => setTavilyKey(event.target.value.trim() || null)}
+          style={{ width: 'min(180px, 40vw)', padding: 8, borderRadius: 8 }}
+        />
+      }
+    />
+  )
 }
 
 const LocationSetting = () => {

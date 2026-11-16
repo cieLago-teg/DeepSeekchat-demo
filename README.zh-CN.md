@@ -1,5 +1,23 @@
 # chat-demo
 
+## 可补充指令的 Agent 调研
+
+本 Fork 基于 [DeepSeek Chat Demo](https://github.com/deepseek-ai/chat-demo) v0.1.1（`5d5dd75`），保留原有 MIT 许可和 DeepSeek 署名。浏览器负责 Agent 循环与搜索，仍可部署为静态网页。
+
+运行 `pnpm install --frozen-lockfile && pnpm dev`，打开 http://localhost:8090：
+
+1. 勾选输入框上方的「Agent 调研」和「模拟体验（无需 Key）」，发送「调研 DeepSeek API 文档」。
+2. 搜索暂停时，在同一输入框发送「只看官方文档，重点查 API 限制」。界面立即显示「已收到」。
+3. 点击「完成本次模拟搜索」，看到「已应用 · 第 2 次模型调用」。第二次搜索将限定官方域名；再次点击完成，Agent 在同一个任务内交付结果。模拟数据固定，不调用真实模型或搜索服务。
+
+真实调研：关闭模拟体验，在「设置 → 数据管理」输入 DeepSeek API Key 和 Tavily 搜索 API Key。普通聊天只需 DeepSeek Key。浏览器直接访问 DeepSeek Messages API 和 `api.tavily.com/search`，Key 保存在本浏览器 localStorage，不写入构建；搜索查询发送至 Tavily，搜索结果摘要与补充指令进入 DeepSeek 请求。模拟模式禁用附件与语音输入。
+
+补充在**下一次模型请求前**生效，无法改写已发出的 SSE 请求。浏览器先合并已完成的 `tool_result`，再加入待处理补充，并在发出下一次调用时显示「已应用」与调用序号；「已应用」表示已写入请求，模型遵循情况仍需查看回答。若补充在回答生成中到达，本轮结束后继续一轮。官方文档要求会提示模型限定搜索域名，浏览器也按工具请求中的域名过滤结果。
+
+停止会取消模型与搜索请求并阻止后续步骤；尚未消费的补充标记「未应用」。每个任务最多 8 次模型调用、4 次搜索、20 条补充，每条最多 4000 字。Agent 使用非思考模式，普通聊天继续使用上游开关。任务活动与补充保存到 IndexedDB，后续聊天上下文保留已应用的要求；上游 ZIP 归档只保留聊天正文，不保留新增 Agent 活动元数据。
+
+执行 `pnpm test:e2e` 可复现网络层可控测试，无需真实 Key。测试暂停搜索、发送补充，再检查后续模型请求正文中的补充与工具结果，并回归普通聊天、停止与失败处理。无 Chromium 时执行 `pnpm exec playwright install chromium`，或指定 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`。请求证据见 `test-results/steering-requests.json`，截图见 `test-results/steering-complete.png`。`pnpm build && pnpm test:static` 通过本地纯静态 HTTP 服务验证生产文件，详细结果见 [验证记录](docs/verification.md)。
+
 [English](README.md) | 简体中文
 
 基于 DeepSeek API 的静态聊天示例。无需应用后端，浏览器直接请求配置的 API 服务。

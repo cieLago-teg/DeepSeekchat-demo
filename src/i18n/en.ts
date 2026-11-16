@@ -1,6 +1,38 @@
 import type { zh } from './zh.js'
 
 export const en = {
+  agentMode: 'Research agent',
+  agentDemo: 'Simulation (no key)',
+  agentModeHint:
+    'Browser-run search with steering. Agent uses non-thinking mode; chat toggles apply when Agent is off.',
+  agentSteerHint:
+    'Steering applies at the next model call. In-flight requests continue. Text only; up to 4,000 characters and 20 instructions.',
+  agentSteerPlaceholder: 'Steer this task, e.g. only official documentation, focus on API limits',
+  agentSteerSend: 'Send steering',
+  agentReceived: 'Received · waiting for the next model call',
+  agentReceiptToast: 'Received',
+  agentApplied: 'Applied · model call {call}',
+  agentUnapplied: 'Not applied · task ended',
+  agentProgress: 'Agent task progress',
+  agentPlanning: 'Agent planning',
+  agentSearching: 'Searching',
+  agentAnswering: 'Agent researching or drafting the answer',
+  agentDone: 'Agent completed',
+  agentStopped: 'Agent stopped',
+  agentError: 'Agent error',
+  agentCalls: 'Model calls {count}/8',
+  agentSearchDone: 'Search completed',
+  agentSearchError: 'Search failed',
+  agentDomains: 'Source domains',
+  agentReleaseSearch: 'Complete this simulated search',
+  agentSearchKey: 'Tavily search API key',
+  agentSearchKeyHint:
+    'For research agents. Stored in this browser; queries go to api.tavily.com. Ordinary chat does not need it.',
+  agentSearchKeyMissing: 'Enter a Tavily search API key in Settings → Data, or enable simulation.',
+  agentInvalidTool: 'The model returned invalid search tool arguments.',
+  agentInvalidSearch: 'The search service returned an invalid response.',
+  agentIncomplete: 'The agent response did not finish correctly. Regenerate to retry.',
+  agentLimit: 'Agent reached the limit of 8 model calls. Start another task.',
   welcomeMessageChat250808: 'How can I help you?',
   contentCaveat: 'AI-generated, for reference only',
   expandSiderbarButton: 'Open sidebar',

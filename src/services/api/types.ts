@@ -149,6 +149,7 @@ export type WebFetchToolResultBlockParam = WebFetchToolResultBlock
 export type AssistantBlockParam =
   | TextBlockParam
   | ThinkingBlock
+  | ToolUseBlock
   | ServerToolUseBlockParam
   | WebSearchToolResultBlockParam
   | WebFetchToolResultBlockParam
@@ -157,7 +158,7 @@ export type AssistantBlockParam =
 export type MessageParam =
   /** Chat Engine 扩展角色，位于对应 user 前；需服务端支持 latest_reminder。 */
   | { role: 'latest_reminder'; content: string }
-  | { role: 'user'; content: string | (FileBlockParam | TextBlockParam)[] }
+  | { role: 'user'; content: string | (FileBlockParam | TextBlockParam | ToolResultParam)[] }
   | { role: 'assistant'; content: AssistantBlockParam[] }
 
 /** 开启联网搜索与边想边搜 */
@@ -172,12 +173,25 @@ export type DeepseekReadUrlTool = {
   name: 'deepseek_read_url'
 }
 
+export type ToolResultParam = {
+  type: 'tool_result'
+  tool_use_id: string
+  content: string
+  is_error?: boolean
+}
+
+export type ClientTool = {
+  name: string
+  description: string
+  input_schema: Record<string, unknown>
+}
+
 export type CreateMessageRequest = {
   model: ChatModel
   system: string
   messages: MessageParam[]
   thinking: { type: 'enabled' | 'disabled' }
-  tools: (DeepseekWebSearchTool | DeepseekReadUrlTool)[]
+  tools: (DeepseekWebSearchTool | DeepseekReadUrlTool | ClientTool)[]
   safety_check: { level: 'high' }
   title?: { enabled: boolean }
 }

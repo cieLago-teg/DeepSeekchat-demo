@@ -16,6 +16,7 @@ import { toggleSearchPanel, useSearchPanel } from '../search/searchPanelState.js
 import { ReadAloudButton } from './ReadAloudButton.js'
 import { CopyButton } from './CopyButton.js'
 import { ReplyArea } from './ReplyArea.js'
+import { AgentProgress } from './AgentProgress.js'
 import { useReplyView } from './useReplyView.js'
 import {
   BranchSwitcher,
@@ -58,6 +59,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   const summaryEntry = `${message.id}-summary`
   return (
     <div className={styles.message}>
+      {message.agent ? <AgentProgress task={message.agent} sessionId={sessionId} /> : null}
       {refused ? null : (
         <ReplyArea
           message={message}
