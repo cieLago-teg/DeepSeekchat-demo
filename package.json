@@ -1,6 +1,6 @@
 {
   "name": "chat-demo",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "基于 DeepSeek API 的静态聊天示例。",
   "license": "MIT",
   "private": true,
@@ -9,7 +9,7 @@
     "test:e2e": "playwright test",
     "test:static": "node tests/static-smoke.mjs",
     "dev": "rspack serve -c rspack.config.ts",
-    "build": "rm -rf dist && NODE_ENV=production rspack build -c rspack.config.ts",
+    "build": "rspack build --node-env production -c rspack.config.ts",
     "type": "tsc -p tsconfig.json",
     "lint": "oxlint src rspack.config.ts",
     "format": "oxfmt --write ."

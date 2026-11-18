@@ -25,6 +25,7 @@ import {
   setThemePreference,
   setTtsVoice,
   setTavilyKey,
+  setDemo,
   useSettings,
   type ThemePreference,
 } from '../../services/settings.js'
@@ -210,22 +211,38 @@ const useHistoryDelete = () => {
 const ResearchSettings = () => {
   const t = useTranslate()
   const key = useSettings((state) => state.tavilyKey)
+  const demo = useSettings((state) => state.demo)
   return (
-    <SettingCell
-      label={t('agentSearchKey')}
-      description={t('agentSearchKeyHint')}
-      status={null}
-      action={
-        <input
-          type="password"
-          aria-label={t('agentSearchKey')}
-          autoComplete="off"
-          value={key ?? ''}
-          onChange={(event) => setTavilyKey(event.target.value.trim() || null)}
-          style={{ width: 'min(180px, 40vw)', padding: 8, borderRadius: 8 }}
-        />
-      }
-    />
+    <>
+      <SettingCell
+        label={t('agentDemo')}
+        description={t('simulationDescription')}
+        status={null}
+        action={
+          <input
+            type="checkbox"
+            aria-label={t('agentDemo')}
+            checked={demo}
+            onChange={(event) => setDemo(event.target.checked)}
+          />
+        }
+      />
+      <SettingCell
+        label={t('agentSearchKey')}
+        description={t('agentSearchKeyHint')}
+        status={null}
+        action={
+          <input
+            type="password"
+            aria-label={t('agentSearchKey')}
+            autoComplete="off"
+            value={key ?? ''}
+            onChange={(event) => setTavilyKey(event.target.value.trim() || null)}
+            style={{ width: 'min(180px, 40vw)', padding: 8, borderRadius: 8 }}
+          />
+        }
+      />
+    </>
   )
 }
 

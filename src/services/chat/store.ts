@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createId } from '../../utils/id.js'
 import { ApiError, streamMessage } from '../api/client.js'
-import type { ChatModel, CreateMessageRequest } from '../api/types.js'
+import type { CreateMessageRequest } from '../api/types.js'
 import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
 import { useSettings } from '../settings.js'
@@ -34,8 +34,6 @@ import {
   type UserMessage,
 } from './types.js'
 
-/** deepseek-flash 同时支持深度思考与图片输入 */
-const MODEL: ChatModel = 'deepseek-flash'
 /** 所有生成请求统一携带的助手身份说明 */
 const SYSTEM_PROMPT = '该助手为DeepSeek，由深度求索公司创造。'
 /** 保留最近打开的详情；当前会话、生成中及尚未成功保存的会话不淘汰。 */
@@ -279,14 +277,14 @@ export const bindChatPersistence = () => {
 
 /** 按当前开关创建回复：深度思考对应 thinking，智能搜索控制 deepseek_web_search。 */
 const createReply = (): AssistantMessage => {
-  const { thinking, search, agent, demo } = useSettings.getState()
+  const { model, thinking, search, agent, demo } = useSettings.getState()
   const id = createId()
   return {
     id,
     role: 'assistant',
     createdAt: Date.now(),
-    model: MODEL,
-    thinking: agent ? false : thinking,
+    model,
+    thinking: agent || thinking,
     search,
     prefix: !agent,
     status: 'pending',
@@ -316,9 +314,13 @@ const settleInterrupted = (session: Session): Session => {
                     agent: {
                       ...m.agent,
                       phase: 'stopped',
-                      steers: m.agent.steers.map((s) =>
-                        s.status === 'received' ? { ...s, status: 'unapplied' } : s
-                      ),
+                      steers: m.agent.steers.map((s) => ({
+                        ...s,
+                        status: s.status === 'received' ? 'unapplied' : s.status,
+                        ...(s.reply && ['pending', 'streaming'].includes(s.reply.status)
+                          ? { reply: { ...s.reply, status: 'stopped' } }
+                          : {}),
+                      })),
                       steps: m.agent.steps.map((s) =>
                         s.status === 'searching' ? { ...s, status: 'stopped' } : s
                       ),
@@ -751,11 +753,11 @@ export const continueReply = (sessionId: string, messageId: string) => {
   ) {
     return
   }
-  const { thinking, search } = useSettings.getState()
+  const { model, thinking, search } = useSettings.getState()
   const reply: AssistantMessage = {
     ...previous,
-    // 未记录请求配置的回复，续写时使用默认模型和当前开关。
-    model: previous.model ?? MODEL,
+    // 续写使用当前选择的模型，思考与搜索沿用本轮设置。
+    model,
     thinking: previous.thinking ?? thinking,
     search: previous.search ?? search,
     status: 'pending',
@@ -1011,16 +1013,24 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
     titleRequests.add(controller)
   }
   set((state) => ({ streaming: { ...state.streaming, [sessionId]: controller } }))
-  let reply = initial
+  let reply = initial.agent ? { ...initial, thinking: true } : initial
+  let responseBlockStart = reply.blocks.length
   const demo = initial.agent?.demo ?? useSettings.getState().demo
   const apiKey = useSettings.getState().apiKey ?? ''
   const searchKey = useSettings.getState().tavilyKey ?? ''
   const agent = initial.agent
-    ? new AgentRuntime(initial.agent, (task) => {
-        reply = { ...reply, agent: task }
-        updateReply(sessionId, reply)
-        persist(sessionId)
-      })
+    ? new AgentRuntime(
+        initial.agent,
+        (task) => {
+          reply = { ...reply, agent: task }
+          updateReply(sessionId, reply)
+          persist(sessionId)
+        },
+        () => {
+          reply = { ...reply, blocks: reply.blocks.slice(0, responseBlockStart) }
+          updateReply(sessionId, reply)
+        }
+      )
     : undefined
   if (agent) {
     activeAgents.set(sessionId, agent)
@@ -1056,7 +1066,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           latestReminder
         )
         const body: CreateMessageRequest = {
-          model: initial.model ?? MODEL,
+          model: initial.model ?? useSettings.getState().model,
           system: SYSTEM_PROMPT,
           messages,
           thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
@@ -1069,6 +1079,9 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           : (demo ? streamDemoMessage : streamMessage)(apiKey, body, controller.signal)
         const blockIndexes = new Map<number, number>()
         for await (const event of events) {
+          if (event.type === 'message_start') {
+            responseBlockStart = reply.blocks.length
+          }
           receivedContent ||= event.type === 'content_block_start'
           if (
             event.type === 'message_delta' &&

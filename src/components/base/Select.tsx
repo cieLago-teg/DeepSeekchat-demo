@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAnchoredPosition, useDismiss } from './anchored.js'
 import { IconCheckOutline16, IconChevronDownOutline14 } from './icons.js'
@@ -37,6 +37,14 @@ export const Select = <T extends string>({
   >(open, { align: 'end', maxHeight: 320, minSpace: 160 })
   // Esc 只关菜单，不让外层弹窗一起关闭
   useDismiss(open, [anchorRef, floatingRef], () => setOpen(false), { captureEscape: true })
+  useEffect(() => {
+    if (open) {
+      const selected = floatingRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')
+      const first = floatingRef.current?.querySelector<HTMLElement>('[role="option"]')
+      const item = selected ?? first
+      item?.focus()
+    }
+  }, [open, floatingRef])
 
   return (
     <>
@@ -49,6 +57,12 @@ export const Select = <T extends string>({
         aria-expanded={open}
         disabled={disabled}
         onClick={() => setOpen((value) => !value)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            setOpen(true)
+          }
+        }}
       >
         {current ? (
           <span lang={current.lang}>{current.label}</span>
@@ -67,10 +81,31 @@ export const Select = <T extends string>({
               style={position ?? undefined}
               role="listbox"
               aria-label={ariaLabel}
+              onKeyDown={(event) => {
+                const items = Array.from(
+                  event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]')
+                )
+                const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement)
+                if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+                  event.preventDefault()
+                  const index =
+                    event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? items.length - 1
+                        : (currentIndex + (event.key === 'ArrowDown' ? 1 : -1) + items.length) %
+                          items.length
+                  items[index]?.focus()
+                } else if (event.key === 'Escape' || event.key === 'Tab') {
+                  setOpen(false)
+                  anchorRef.current?.focus()
+                }
+              }}
             >
               {options.map((option) => (
-                <div
+                <button
                   key={option.value}
+                  type="button"
                   role="option"
                   lang={option.lang}
                   aria-selected={option.value === value}
@@ -78,11 +113,12 @@ export const Select = <T extends string>({
                   onClick={() => {
                     setOpen(false)
                     onChange(option.value)
+                    anchorRef.current?.focus()
                   }}
                 >
                   <span>{option.label}</span>
                   {option.value === value ? <IconCheckOutline16 /> : null}
-                </div>
+                </button>
               ))}
             </div>,
             document.body

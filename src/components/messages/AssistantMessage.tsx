@@ -59,7 +59,6 @@ export const AssistantMessage = memo(function AssistantMessage({
   const summaryEntry = `${message.id}-summary`
   return (
     <div className={styles.message}>
-      {message.agent ? <AgentProgress task={message.agent} sessionId={sessionId} /> : null}
       {refused ? null : (
         <ReplyArea
           message={message}
@@ -85,6 +84,7 @@ export const AssistantMessage = memo(function AssistantMessage({
           ))}
         </div>
       ) : null}
+      {message.agent ? <AgentProgress task={message.agent} sessionId={sessionId} /> : null}
       {notice?.presentation === 'response' ? (
         <Markdown
           className="ds-assistant-message-main-content"

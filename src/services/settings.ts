@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { TtsVoice } from './api/speech.js'
+import type { ChatModel } from './api/types.js'
 import { normalizeLocation, type UserLocation } from './location.js'
 
 export type Locale = 'zh-CN' | 'en-US'
@@ -9,6 +10,7 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 
 /** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、侧边栏收起状态 */
 type Settings = {
+  model: ChatModel
   apiKey: string | null
   tavilyKey: string | null
   agent: boolean
@@ -23,6 +25,7 @@ type Settings = {
 }
 
 const KEYS = {
+  model: 'chat-demo:model',
   apiKey: 'chat-demo:api-key',
   tavilyKey: 'chat-demo:tavily-key',
   agent: 'chat-demo:agent',
@@ -94,6 +97,7 @@ const initialThemePreference = (): ThemePreference => {
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
 export const useSettings = create<Settings>(() => ({
+  model: read(KEYS.model) === 'deepseek-flash' ? 'deepseek-flash' : 'deepseek-v4-pro',
   apiKey: read(KEYS.apiKey),
   tavilyKey: read(KEYS.tavilyKey),
   agent: read(KEYS.agent) === 'true',
@@ -106,6 +110,11 @@ export const useSettings = create<Settings>(() => ({
   search: read(KEYS.search) === 'true',
   siderCollapsed: read(KEYS.siderCollapsed) === 'true',
 }))
+
+export const setModel = (model: ChatModel) => {
+  write(KEYS.model, model)
+  useSettings.setState({ model })
+}
 
 export const setAgent = (agent: boolean) => {
   write(KEYS.agent, String(agent))

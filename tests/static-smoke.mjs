@@ -60,6 +60,7 @@ try {
   await page.getByRole('textbox').fill('只看官方文档，重点查 API 限制')
   await page.getByRole('button', { name: '发送补充' }).click()
   await expect(task.locator('[data-steer-status="received"]')).toBeVisible()
+  await expect(task.locator('[data-dialogue-status="done"]')).toContainText('模拟回复')
   await page.getByRole('button', { name: '完成本次模拟搜索' }).click()
   await expect(task).toContainText('已应用 · 第 2 次模型调用')
   await page.getByRole('button', { name: '完成本次模拟搜索' }).click()

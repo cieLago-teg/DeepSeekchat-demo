@@ -36,6 +36,17 @@
   border-left: 3px solid #4c7bdb;
   white-space: pre-wrap;
 }
+.agent-dialogue {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #8f9fb315;
+  border-radius: 6px;
+}
+.agent-user-message {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
 .agent-progress button {
   margin-top: 10px;
   padding: 6px 12px;

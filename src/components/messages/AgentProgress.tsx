@@ -2,6 +2,7 @@ import { useTranslate, type TranslationKey } from '../../i18n/index.js'
 import type { AgentTask } from '../../services/chat/agent.js'
 import { completeDemoSearch } from '../../services/chat/store.js'
 import './agentProgress.css'
+import userStyles from './UserMessage.module.css'
 
 const phases: Record<AgentTask['phase'], TranslationKey> = {
   planning: 'agentPlanning',
@@ -19,23 +20,10 @@ export const AgentProgress = ({ task, sessionId }: { task: AgentTask; sessionId:
       <div role="status" aria-live="polite">
         <strong>{t(phases[task.phase])}</strong>
         {task.demo ? <span className="agent-badge">{t('agentDemo')}</span> : null}
-        <span className="agent-call-count">{t('agentCalls', { count: task.calls })}</span>
+        <span className="agent-call-count">
+          {t('agentCalls', { count: task.calls, limit: task.callLimit ?? 8 })}
+        </span>
       </div>
-      {task.steers.map((steer) => (
-        <div key={steer.id} className="agent-steer" data-steer-status={steer.status} role="status">
-          <strong>
-            {t(
-              steer.status === 'received'
-                ? 'agentReceived'
-                : steer.status === 'applied'
-                  ? 'agentApplied'
-                  : 'agentUnapplied',
-              { call: steer.call ?? 0 }
-            )}
-          </strong>
-          <div>{steer.text}</div>
-        </div>
-      ))}
       {task.steps.map((step) => (
         <details key={step.id} open={step.status === 'searching'}>
           <summary>
@@ -66,6 +54,37 @@ export const AgentProgress = ({ task, sessionId }: { task: AgentTask; sessionId:
             ))}
           </ul>
         </details>
+      ))}
+      {task.steers.map((steer) => (
+        <div key={steer.id} className="agent-steer" data-steer-status={steer.status} role="status">
+          <strong>
+            {t(
+              steer.status === 'received'
+                ? 'agentReceived'
+                : steer.status === 'applied'
+                  ? 'agentApplied'
+                  : 'agentUnapplied',
+              { call: steer.call ?? 0 }
+            )}
+          </strong>
+          <div className="agent-user-message">
+            <div className={userStyles.bubble}>{steer.text}</div>
+          </div>
+          {steer.reply ? (
+            <div className="agent-dialogue" data-dialogue-status={steer.reply.status}>
+              <strong>{t('agentDialogueReply')}</strong>
+              <div>
+                {steer.reply.text ||
+                  t(
+                    steer.reply.status === 'stopped'
+                      ? 'agentDialogueStopped'
+                      : 'agentDialoguePending'
+                  )}
+              </div>
+              {steer.reply.error ? <div role="alert">{steer.reply.error}</div> : null}
+            </div>
+          ) : null}
+        </div>
       ))}
       {task.demo && task.phase === 'searching' ? (
         <button type="button" onClick={() => completeDemoSearch(sessionId)}>

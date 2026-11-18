@@ -18,7 +18,7 @@ export async function* streamDemoMessage(
   const steered = /只看官方|official documentation/i.test(context)
   yield {
     type: 'message_start',
-    message: { id: `demo-${results.length}`, model: 'deepseek-flash' },
+    message: { id: `demo-${results.length}`, model: body.model },
   }
   if (agent && (results.length === 0 || (steered && results.length === 1))) {
     const input = JSON.stringify({

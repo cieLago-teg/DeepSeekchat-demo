@@ -12,8 +12,8 @@
   cursor: pointer;
 
   &.active {
-    background-color: var(--dsw-specific-sidebar-nav-item-active-accent);
-    color: var(--dsw-alias-brand-primary-invert);
+    background-color: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
   }
 
   @media (hover: hover) {

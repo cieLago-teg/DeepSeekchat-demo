@@ -20,6 +20,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
   padding: 8px 10px;
   border-radius: 8px;
   font-size: 14px;
@@ -28,8 +33,18 @@
   cursor: pointer;
   user-select: none;
 
-  &:hover {
+  &:hover:not(:disabled),
+  &:focus-visible {
     background-color: var(--dsw-alias-interactive-bg-hover);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  > svg:last-child {
+    width: 14px;
+    height: 14px;
+    margin-left: auto;
   }
 }
 
