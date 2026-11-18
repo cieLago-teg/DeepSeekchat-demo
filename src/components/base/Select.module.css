@@ -83,6 +83,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
   min-height: 40px;
   padding: 4px 10px;
   border-radius: 10px;
@@ -94,7 +99,8 @@
   user-select: none;
   transition: background-color var(--ds-transition-duration) var(--ds-ease-in-out);
 
-  &:hover {
+  &:hover,
+  &:focus-visible {
     background: var(--dsw-alias-interactive-bg-hover);
   }
 }

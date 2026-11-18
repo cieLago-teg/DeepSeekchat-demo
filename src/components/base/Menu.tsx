@@ -1,7 +1,8 @@
 import clsx from 'clsx'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useAnchoredPosition, useDismiss } from './anchored.js'
+import { IconCheckOutline16 } from './icons.js'
 import styles from './Menu.module.css'
 
 export type MenuOption = {
@@ -9,6 +10,8 @@ export type MenuOption = {
   label: string
   icon: ReactNode
   danger?: boolean
+  disabled?: boolean
+  checked?: boolean
   onSelect: () => void
 }
 
@@ -28,6 +31,11 @@ export const Menu = ({
     { align: 'start', alignOffset: -5, offset: 4 }
   )
   useDismiss(open, [anchorRef, floatingRef], close)
+  useEffect(() => {
+    if (open) {
+      floatingRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
+    }
+  }, [open, floatingRef])
 
   return (
     <>
@@ -41,20 +49,40 @@ export const Menu = ({
               className={styles.menu}
               style={position ?? undefined}
               role="menu"
+              onKeyDown={(event) => {
+                const items = Array.from(
+                  event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
+                )
+                const index = items.indexOf(document.activeElement as HTMLButtonElement)
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault()
+                  items[
+                    (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+                  ]?.focus()
+                } else if (event.key === 'Escape' || event.key === 'Tab') {
+                  close()
+                  anchorRef.current?.querySelector('button')?.focus()
+                }
+              }}
             >
               {options.map((option) => (
-                <div
+                <button
                   key={option.key}
-                  role="menuitem"
+                  type="button"
+                  role={option.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+                  aria-checked={option.checked}
+                  disabled={option.disabled}
                   className={clsx(styles.option, option.danger && styles.danger)}
                   onClick={() => {
                     setOpen(false)
                     option.onSelect()
+                    anchorRef.current?.querySelector('button')?.focus()
                   }}
                 >
                   <span className={styles.icon}>{option.icon}</span>
                   {option.label}
-                </div>
+                  {option.checked ? <IconCheckOutline16 /> : null}
+                </button>
               ))}
             </div>,
             document.body

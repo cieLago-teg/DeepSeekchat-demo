@@ -1,8 +1,13 @@
 import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
-import { IconPanelLeftOutline16, IconSettingsOutline16, NewChatIcon } from '../base/icons.js'
-import { setSiderCollapsed } from '../../services/settings.js'
+import {
+  IconPanelLeftOutline16,
+  IconSettingsOutline16,
+  IconSearchOutline16,
+  IconDataOutline16,
+  NewChatIcon,
+} from '../base/icons.js'
 import { groupSessions } from '../../services/chat/sessionGroups.js'
 import { newChat, removeSession, useChatStore } from '../../services/chat/store.js'
 import type { SessionSummary } from '../../services/chat/types.js'
@@ -21,7 +26,21 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const sessions = useChatStore((state) => state.sessions)
   const activeId = useChatStore((state) => state.activeId)
   const [now, setNow] = useState(Date.now)
-  const groups = useMemo(() => groupSessions(sessions, now, t), [sessions, now, t])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const groups = useMemo(
+    () =>
+      groupSessions(
+        sessions.filter((session) =>
+          (session.title || t('untitledChat'))
+            .toLocaleLowerCase()
+            .includes(query.trim().toLocaleLowerCase())
+        ),
+        now,
+        t
+      ),
+    [sessions, now, t, query]
+  )
   const [deleting, setDeleting] = useState<SessionSummary | null>(null)
   const [deletePending, setDeletePending] = useState(false)
 
@@ -53,13 +72,15 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
     <div className={clsx(styles.sider, mobile && styles.mobile)}>
       <div className={styles.top}>
         <div className={styles.appName}>{t('appName')}</div>
-        <IconButton
-          size="m"
-          icon={<IconPanelLeftOutline16 />}
-          tooltip={t('collapseSiderbarButton')}
-          tooltipPlacement="bottom"
-          onClick={() => (mobile ? closeMobileSider() : setSiderCollapsed(true))}
-        />
+        {mobile ? (
+          <IconButton
+            size="m"
+            icon={<IconPanelLeftOutline16 />}
+            tooltip={t('collapseSiderbarButton')}
+            tooltipPlacement="bottom"
+            onClick={closeMobileSider}
+          />
+        ) : null}
       </div>
       <button
         type="button"
@@ -74,8 +95,45 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         </span>
         {t('newChat')}
       </button>
+      <nav className={styles.navigation}>
+        <button type="button" className={styles.navItem} onClick={() => openSettings('data')}>
+          <IconDataOutline16 />
+          {t('settingDialogAsideDataOptionLabel')}
+        </button>
+      </nav>
+      <div className={styles.historyHeader}>
+        <span>{t('sessionHistory')}</span>
+        <IconButton
+          icon={<IconSearchOutline16 />}
+          aria-label={t('searchSessions')}
+          aria-expanded={searchOpen}
+          onClick={() => {
+            setSearchOpen(!searchOpen)
+            setQuery('')
+          }}
+        />
+      </div>
+      {searchOpen ? (
+        <input
+          className={styles.searchInput}
+          aria-label={t('searchSessions')}
+          placeholder={t('searchSessions')}
+          value={query}
+          autoFocus
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setSearchOpen(false)
+              setQuery('')
+            }
+          }}
+        />
+      ) : null}
       <div className={styles.listWrap}>
         <div className={styles.list}>
+          {query && groups.length === 0 ? (
+            <div className={styles.empty}>{t('noMatchingSessions')}</div>
+          ) : null}
           {groups.map((group) => (
             <div key={group.key} className={styles.section}>
               <div className={styles.sectionHeader}>{group.label}</div>

@@ -1,36 +1,48 @@
 .wrapper {
   --line-height: 24px;
-  --input-padding-top: 12px;
+  --input-padding-top: 16px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   width: 100%;
-  cursor: text;
   font-size: 16px;
   line-height: var(--line-height);
-  border-radius: 24px;
+}
+.modeBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  margin: 0 4px 8px;
+}
+.modeBar .modeSelect {
+  background: transparent;
+  padding-left: 8px;
+  font-size: 14px;
+}
+.demoStatus {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}
+.composer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
+  border-radius: 22px;
   background: var(--dsw-specific-input-major);
   overflow: hidden;
+  box-shadow: 0 3px 18px #00000005;
 }
-
-.session {
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.02),
-    0 2px 4px rgba(0, 0, 0, 0.04);
+.composer:focus-within {
+  border-color: var(--dsw-alias-border-l2);
 }
-
-.home {
-  box-shadow:
-    0 4px 12px 0 rgba(0, 0, 0, 0.02),
-    0 2px 2px 0 rgba(72, 104, 178, 0.01),
-    0 30px 60px 0 rgba(72, 104, 178, 0.03);
-
-  [data-ds-dark-theme] & {
-    box-shadow: none;
-  }
+.home .composer {
+  box-shadow: 0 4px 24px #00000006;
 }
-
+.session .composer {
+  box-shadow: 0 2px 12px #00000004;
+}
 .attachments {
   display: flex;
   align-items: flex-end;
@@ -173,7 +185,7 @@
   display: block;
   box-sizing: border-box;
   width: 100%;
-  min-height: calc(var(--line-height) * 2 + var(--input-padding-top));
+  min-height: calc(var(--line-height) * 2.5 + var(--input-padding-top));
   margin: 0;
   padding: var(--input-padding-top) 12px 0 16px;
   border: none;
@@ -219,114 +231,143 @@
   max-height: 336px;
 }
 
-@media not all and (min-width: 768px) {
-  .wrapper {
-    flex-shrink: 0;
-    max-height: calc(var(--app-viewport-height, 100dvh) - 120px);
-  }
-
-  .textareaWrapper {
-    min-height: 0;
-  }
-
-  .attachments,
-  .functionRow {
-    flex-shrink: 0;
-  }
-}
-
 .functionRow {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-top: 4px;
-  padding: 12px;
+  padding: 10px 12px 12px;
 }
-
-.toggles {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.collapsedToggles .toggleLabel {
-  display: none;
-}
-
-.toggle {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 18px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background-color: transparent;
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
-  transition-property: border, background;
-  transition-duration: 0.2s;
-
-  &:hover:not(:disabled) {
-    background-color: var(--dsw-alias-interactive-bg-hover);
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  &.selected {
-    background-color: var(--dsw-alias-button-ghost-active-fill);
-    color: var(--dsw-alias-brand-text);
-    border-color: var(--dsw-alias-button-ghost-active-border);
-
-    &:hover {
-      background-color: var(--dsw-alias-button-ghost-active-hover);
-    }
-  }
-}
-
+.left,
 .right {
   display: flex;
-  flex-shrink: 0;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
+}
+.left {
+  flex-shrink: 0;
+}
+.right {
   margin-left: auto;
 }
-
+.right .modelSelect {
+  flex-shrink: 1;
+  min-width: 0;
+  background: transparent;
+  padding-left: 8px;
+  padding-right: 28px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+}
+.right .modelSelect > span:last-child {
+  right: 8px;
+}
+.optionsButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  border: 0;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.optionsButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--dsw-specific-selector);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 25px;
+  font-weight: 300;
+  cursor: pointer;
+}
+.addButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .sendButton {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  margin-left: 6px;
+  width: 36px;
+  height: 36px;
+  margin-left: 8px;
   padding: 0;
-  border: none;
+  border: 0;
   border-radius: 50%;
   background: var(--dsw-alias-button-primary-fill);
-  color: var(--dsw-static-neutral-bluish-00);
+  color: white;
   cursor: pointer;
-  transition: background 0.2s ease;
-
-  &:not(.disabled):hover {
-    background: var(--dsw-alias-button-primary-hover);
+}
+.sendButton:not(.disabled):hover {
+  background: var(--dsw-alias-button-primary-hover);
+}
+.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.addButton:focus-visible,
+.optionsButton:focus-visible,
+.sendButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .optionLabel {
+    display: none;
   }
+  .functionRow {
+    padding: 8px;
+    gap: 4px;
+  }
+  .left,
+  .right {
+    gap: 2px;
+  }
+  .right .modelSelect {
+    max-width: 148px;
+    font-size: 12px;
+  }
+  .sendButton {
+    width: 32px;
+    height: 32px;
+    margin-left: 2px;
+  }
+  .composer {
+    border-radius: 18px;
+  }
+  .modeBar {
+    margin-bottom: 4px;
+  }
+}
 
-  &.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+@media (max-width: 767px) {
+  .wrapper {
+    flex-shrink: 0;
+    max-height: calc(var(--app-viewport-height, 100dvh) - 120px);
+  }
+  .textareaWrapper {
+    min-height: 0;
+  }
+  .attachments,
+  .functionRow {
+    flex-shrink: 0;
   }
 }

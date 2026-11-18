@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createId } from '../../utils/id.js'
 import { ApiError, streamMessage } from '../api/client.js'
-import type { ChatModel, CreateMessageRequest } from '../api/types.js'
+import type { CreateMessageRequest } from '../api/types.js'
 import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
 import { useSettings } from '../settings.js'
@@ -15,6 +15,8 @@ import {
   prepareDraftMessage,
 } from './drafts.js'
 import { createLatestReminder } from './latestReminder.js'
+import { AgentRuntime, createAgentTask } from './agent.js'
+import { streamDemoMessage } from './demo.js'
 import {
   applyEvent,
   canContinueReply,
@@ -32,8 +34,6 @@ import {
   type UserMessage,
 } from './types.js'
 
-/** deepseek-flash 同时支持深度思考与图片输入 */
-const MODEL: ChatModel = 'deepseek-flash'
 /** 所有生成请求统一携带的助手身份说明 */
 const SYSTEM_PROMPT = '该助手为DeepSeek，由深度求索公司创造。'
 /** 保留最近打开的详情；当前会话、生成中及尚未成功保存的会话不淘汰。 */
@@ -58,6 +58,28 @@ const serverTools = (search: boolean): CreateMessageRequest['tools'] => {
 
 /** 允许自动补标题的请求；手动重命名后取消本轮标题写入，包含主动清空标题的情况。 */
 const titleRequests = new Set<AbortController>()
+const activeAgents = new Map<string, AgentRuntime>()
+
+/** Accept plain-text steering into the current reply; do not create a new chat turn. */
+export const steerReply = (sessionId: string): boolean => {
+  if (
+    get().importingHistory ||
+    deletingSessions.has(sessionId) ||
+    getStreamController(sessionId)?.signal.aborted
+  ) {
+    return false
+  }
+  const draft = getDraft(sessionId)
+  if (draft.attachments.length || !activeAgents.get(sessionId)?.steer(createId(), draft.text)) {
+    return false
+  }
+  clearSentDraft(sessionId)
+  persist(sessionId)
+  return true
+}
+
+export const completeDemoSearch = (sessionId: string) =>
+  activeAgents.get(sessionId)?.completeDemoSearch()
 
 type ChatState = {
   ready: boolean
@@ -255,16 +277,18 @@ export const bindChatPersistence = () => {
 
 /** 按当前开关创建回复：深度思考对应 thinking，智能搜索控制 deepseek_web_search。 */
 const createReply = (): AssistantMessage => {
-  const { thinking, search } = useSettings.getState()
+  const { model, thinking, search, agent, demo } = useSettings.getState()
+  const id = createId()
   return {
-    id: createId(),
+    id,
     role: 'assistant',
     createdAt: Date.now(),
-    model: MODEL,
-    thinking,
+    model,
+    thinking: agent || thinking,
     search,
-    prefix: true,
+    prefix: !agent,
     status: 'pending',
+    ...(agent ? { agent: createAgentTask(id, demo) } : {}),
     blocks: [],
   }
 }
@@ -282,7 +306,31 @@ const settleInterrupted = (session: Session): Session => {
     ...session,
     messages: session.messages.map((m) =>
       m.role === 'assistant' && (m.status === 'pending' || m.status === 'streaming')
-        ? settleReply(m, 'stopped', session.updatedAt)
+        ? settleReply(
+            {
+              ...m,
+              ...(m.agent
+                ? {
+                    agent: {
+                      ...m.agent,
+                      phase: 'stopped',
+                      steers: m.agent.steers.map((s) => ({
+                        ...s,
+                        status: s.status === 'received' ? 'unapplied' : s.status,
+                        ...(s.reply && ['pending', 'streaming'].includes(s.reply.status)
+                          ? { reply: { ...s.reply, status: 'stopped' } }
+                          : {}),
+                      })),
+                      steps: m.agent.steps.map((s) =>
+                        s.status === 'searching' ? { ...s, status: 'stopped' } : s
+                      ),
+                    },
+                  }
+                : {}),
+            },
+            'stopped',
+            session.updatedAt
+          )
         : m
     ),
   }
@@ -705,11 +753,11 @@ export const continueReply = (sessionId: string, messageId: string) => {
   ) {
     return
   }
-  const { thinking, search } = useSettings.getState()
+  const { model, thinking, search } = useSettings.getState()
   const reply: AssistantMessage = {
     ...previous,
-    // 未记录请求配置的回复，续写时使用默认模型和当前开关。
-    model: previous.model ?? MODEL,
+    // 续写使用当前选择的模型，思考与搜索沿用本轮设置。
+    model,
     thinking: previous.thinking ?? thinking,
     search: previous.search ?? search,
     status: 'pending',
@@ -965,7 +1013,28 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
     titleRequests.add(controller)
   }
   set((state) => ({ streaming: { ...state.streaming, [sessionId]: controller } }))
-  let reply = initial
+  let reply = initial.agent ? { ...initial, thinking: true } : initial
+  let responseBlockStart = reply.blocks.length
+  const demo = initial.agent?.demo ?? useSettings.getState().demo
+  const apiKey = useSettings.getState().apiKey ?? ''
+  const searchKey = useSettings.getState().tavilyKey ?? ''
+  const agent = initial.agent
+    ? new AgentRuntime(
+        initial.agent,
+        (task) => {
+          reply = { ...reply, agent: task }
+          updateReply(sessionId, reply)
+          persist(sessionId)
+        },
+        () => {
+          reply = { ...reply, blocks: reply.blocks.slice(0, responseBlockStart) }
+          updateReply(sessionId, reply)
+        }
+      )
+    : undefined
+  if (agent) {
+    activeAgents.set(sessionId, agent)
+  }
   let frame = 0
   const flush = () => {
     cancelAnimationFrame(frame)
@@ -996,21 +1065,23 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           initial.thinking ?? false,
           latestReminder
         )
-        const events = streamMessage(
-          useSettings.getState().apiKey ?? '',
-          {
-            model: initial.model ?? MODEL,
-            system: SYSTEM_PROMPT,
-            messages,
-            thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
-            safety_check: SAFETY_CHECK,
-            tools: serverTools(initial.search ?? false),
-            ...(titleRequests.has(controller) ? { title: { enabled: true } } : {}),
-          },
-          controller.signal
-        )
+        const body: CreateMessageRequest = {
+          model: initial.model ?? useSettings.getState().model,
+          system: SYSTEM_PROMPT,
+          messages,
+          thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
+          safety_check: SAFETY_CHECK,
+          tools: serverTools(initial.search ?? false),
+          ...(titleRequests.has(controller) ? { title: { enabled: true } } : {}),
+        }
+        const events = agent
+          ? agent.run({ apiKey, searchKey, body, signal: controller.signal })
+          : (demo ? streamDemoMessage : streamMessage)(apiKey, body, controller.signal)
         const blockIndexes = new Map<number, number>()
         for await (const event of events) {
+          if (event.type === 'message_start') {
+            responseBlockStart = reply.blocks.length
+          }
           receivedContent ||= event.type === 'content_block_start'
           if (
             event.type === 'message_delta' &&
@@ -1031,6 +1102,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
             frame ||= requestAnimationFrame(flush)
           }
         }
+        controller.signal.throwIfAborted()
         reply = settleReply(reply, 'done', Date.now())
         break
       } catch (error) {
@@ -1060,7 +1132,12 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           }
           continue
         }
-        if (error instanceof ApiError && error.kind === 'interrupted' && reply.stopReason) {
+        if (
+          !agent &&
+          error instanceof ApiError &&
+          error.kind === 'interrupted' &&
+          reply.stopReason
+        ) {
           // 已收到 message_delta 的结束原因，只是缺了结尾的 message_stop
           reply = settleReply(reply, 'done', Date.now())
         } else if (error instanceof ApiError) {
@@ -1080,6 +1157,10 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
       }
     }
   } finally {
+    agent?.settle(
+      reply.status === 'stopped' ? 'stopped' : reply.status === 'done' ? 'done' : 'error'
+    )
+    activeAgents.delete(sessionId)
     titleRequests.delete(controller)
     streamFlushes.delete(sessionId)
     cancelAnimationFrame(frame)

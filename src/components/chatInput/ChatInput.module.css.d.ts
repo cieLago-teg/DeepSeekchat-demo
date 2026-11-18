@@ -1,25 +1,32 @@
 declare const styles: {
-  readonly "wrapper": string;
-  readonly "session": string;
-  readonly "home": string;
-  readonly "attachments": string;
-  readonly "attachment": string;
-  readonly "remove": string;
-  readonly "uploading": string;
-  readonly "spin": string;
-  readonly "failed": string;
-  readonly "textareaWrapper": string;
-  readonly "textarea": string;
-  readonly "mirror": string;
-  readonly "functionRow": string;
-  readonly "toggles": string;
-  readonly "collapsedToggles": string;
-  readonly "toggleLabel": string;
-  readonly "toggle": string;
-  readonly "selected": string;
-  readonly "right": string;
-  readonly "sendButton": string;
-  readonly "disabled": string;
-};
-export = styles;
-
+  readonly wrapper: string
+  readonly modeBar: string
+  readonly modeSelect: string
+  readonly demoStatus: string
+  readonly composer: string
+  readonly home: string
+  readonly session: string
+  readonly attachments: string
+  readonly attachment: string
+  readonly remove: string
+  readonly uploading: string
+  readonly attachmentFailed: string
+  readonly failed: string
+  readonly failedStatic: string
+  readonly failedReason: string
+  readonly invalidRemove: string
+  readonly textareaWrapper: string
+  readonly textarea: string
+  readonly mirror: string
+  readonly textareaHidden: string
+  readonly functionRow: string
+  readonly left: string
+  readonly right: string
+  readonly modelSelect: string
+  readonly optionsButton: string
+  readonly addButton: string
+  readonly sendButton: string
+  readonly disabled: string
+  readonly optionLabel: string
+}
+export = styles

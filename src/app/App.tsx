@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useTranslate } from '../i18n/index.js'
-import { useSettings } from '../services/settings.js'
+import { useSettings, setSiderCollapsed } from '../services/settings.js'
+import { IconButton } from '../components/base/IconButton.js'
+import { IconPanelLeftOutline16 } from '../components/base/icons.js'
 import { useIsMobile, useMobileViewport, usePreventPageScroll } from './viewport.js'
 import {
   bindChatPersistence,
@@ -14,7 +16,6 @@ import { closeSearchPanel } from '../components/search/searchPanelState.js'
 import { SessionView } from '../components/session/SessionView.js'
 import { MobileHeader } from '../components/session/MobileHeader.js'
 import { Welcome } from '../components/session/Welcome.js'
-import { ensureApiKey } from '../components/settings/settingsDialogState.js'
 import { SettingsDialog } from '../components/settings/SettingsDialog.js'
 import { Toast } from '../components/base/Toast.js'
 import { showToast } from '../components/base/toastState.js'
@@ -54,7 +55,8 @@ export const App = () => {
 
   useEffect(() => {
     document.documentElement.lang = locale
-  }, [locale])
+    document.title = t('appName')
+  }, [locale, t])
 
   // 文件数、存储空间达到上限时，附件上只显示「上传失败」，原因用 toast 说明
   useEffect(() => onUploadNotice(showToast), [])
@@ -69,8 +71,7 @@ export const App = () => {
 
   useEffect(() => {
     void initChat()
-    // 首次打开先在设置里输入 API Key
-    ensureApiKey()
+    // Live actions request a key when needed; key-free simulation is immediately usable.
   }, [])
 
   return (
@@ -92,6 +93,15 @@ export const App = () => {
             </div>
           ) : null}
           <div className={styles.content}>
+            {!isMobile && !siderCollapsed ? (
+              <IconButton
+                className={styles.panelControl}
+                size="m"
+                icon={<IconPanelLeftOutline16 />}
+                aria-label={t('collapseSiderbarButton')}
+                onClick={() => setSiderCollapsed(true)}
+              />
+            ) : null}
             {siderCollapsed ? <CollapsedSider /> : null}
             {!ready || (activeId !== null && !session) ? (
               <div className={styles.loadingView}>
